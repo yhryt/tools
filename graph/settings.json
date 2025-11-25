@@ -1,16 +1,17 @@
 {
     "x_label": "時間",
-    "x_unit": "s",
+    "x_unit": "",
     "y_label": "電流",
-    "y_unit": "A",
-    "use_trendline": "y",
+    "y_unit": "A^2",
     "font_family": "MS Gothic",
     "font_size": 12,
+    "marker_size": 30,
+    "grid": false,
+    "dpi": 300,
+    "show_r2": false,
+    "use_trendline": "y",
     "figure_size": [
         10,
         6
-    ],
-    "marker_size": 30,
-    "dpi": 300,
-    "grid": false
+    ]
 }
