@@ -1,0 +1,1 @@
+@python "C:\tools\BiB\bibgen.py" %*
