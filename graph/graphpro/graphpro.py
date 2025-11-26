@@ -565,8 +565,11 @@ class GraphApp:
         # 近似直線用: 暖色・強調色系 (赤, オレンジ, ピンク, オリーブ, 黒)
         trend_colors = ['#d62728', '#ff7f0e', '#e377c2', '#bcbd22', '#000000']
 
-        # データ系列が1つだけかどうか判定
-        show_series_legend = len(y_indices) > 1
+        # 凡例収集用のリスト
+        plot_handles = []
+        plot_labels = []
+        fit_handles = []
+        fit_labels = []
 
         # --- データプロット ---
         for i, idx in enumerate(y_indices):
@@ -581,9 +584,10 @@ class GraphApp:
             if current_max > max_val: max_val = current_max
 
             series_color = plot_colors[i % len(plot_colors)]
-            label_val = col_name if show_series_legend else "_nolegend_"
             
-            ax.scatter(x_num_all[mask], y_num[mask], label=label_val, s=settings["marker_size"], color=series_color, alpha=0.8, zorder=3)
+            sc = ax.scatter(x_num_all[mask], y_num[mask], label=col_name, s=settings["marker_size"], color=series_color, alpha=0.8, zorder=3)
+            plot_handles.append(sc)
+            plot_labels.append(col_name)
 
             # --- 近似直線 ---
             for t_idx, t_set in enumerate(self.trendline_sets):
@@ -611,7 +615,7 @@ class GraphApp:
                         if settings.get("show_r2", True):
                             trend_label += f", $R^2={r2:.3f}$"
                         
-                        # 描画範囲：フィット範囲から少し（10%程度）広げる
+                        # 描画範囲
                         x_min_fit, x_max_fit = x_fit.min(), x_fit.max()
                         x_range = x_max_fit - x_min_fit
                         if x_range == 0: x_range = 1 
@@ -624,7 +628,12 @@ class GraphApp:
                         
                         t_color = trend_colors[t_idx % len(trend_colors)]
                         
-                        ax.plot(x_l, p(x_l), color=t_color, linestyle='--', linewidth=2.0, alpha=0.9, label=trend_label, zorder=2)
+                        line, = ax.plot(x_l, p(x_l), color=t_color, linestyle='--', linewidth=2.0, alpha=0.9, label=trend_label, zorder=2)
+                        
+                        # 重複しないようにラベルを追加
+                        if trend_label not in fit_labels:
+                            fit_handles.append(line)
+                            fit_labels.append(trend_label)
                         
                     except: pass
 
@@ -652,10 +661,16 @@ class GraphApp:
             return r"${:.1f} \times 10^{{{}}}$".format(x / 10**exponent, exponent)
         ax.yaxis.set_major_formatter(ticker.FuncFormatter(sci_fmt))
 
-        # 凡例
-        has_trendline = len(self.trendline_sets) > 0
-        if show_series_legend or has_trendline:
-            ax.legend(fontsize=settings["font_size"]*0.8, frameon=True, loc='best')
+        # --- 凡例の配置 (2箇所に分離) ---
+        
+        # 1. プロット凡例 (右上) - データが2つ以上ある場合のみ
+        if len(plot_handles) > 1:
+            l1 = ax.legend(plot_handles, plot_labels, loc='upper right', fontsize=settings["font_size"]*0.8, frameon=True)
+            ax.add_artist(l1) # 2つ目の凡例を追加するために必要
+            
+        # 2. 近似直線凡例 (右下) - 近似直線がある場合のみ
+        if fit_handles:
+            ax.legend(fit_handles, fit_labels, loc='lower right', fontsize=settings["font_size"]*0.8, frameon=True)
 
     def draw_graph(self):
         self.ax.clear()

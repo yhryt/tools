@@ -6,7 +6,7 @@ rem ========================================================
 rem  重要: 下のパスを実際のPythonファイルの場所に書き換えてください
 rem  例: C:\tools\graph\interactive_graph.py
 rem ========================================================
-set PYTHON_SCRIPT="C:\tools\graph\graph.py"
+set PYTHON_SCRIPT="C:\tools\graph\graphgen\graph.py"
 
 rem スクリプトが存在するか確認
 if not exist %PYTHON_SCRIPT% (
