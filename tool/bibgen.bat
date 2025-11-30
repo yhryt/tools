@@ -1,1 +1,1 @@
-@python "C:\tools\BiB\bibgen.py" %*
+@python "C:\tools\tex\BiB\bibgen.py" %*

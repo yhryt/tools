@@ -1,0 +1,12 @@
+{
+    "x_label": "",
+    "x_unit": "",
+    "y_label": "",
+    "y_unit": "",
+    "font_family": "MS Gothic",
+    "font_size": 10,
+    "marker_size": 20,
+    "grid": true,
+    "dpi": 100,
+    "show_r2": true
+}

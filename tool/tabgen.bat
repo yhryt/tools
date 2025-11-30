@@ -1,0 +1,1 @@
+@python "C:\tools\tex\table\tablegen.py" %*

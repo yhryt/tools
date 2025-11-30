@@ -1,0 +1,43 @@
+\documentclass[12pt]{ltjsarticle}
+\usepackage[a4paper, margin=25mm]{geometry}
+\usepackage{amsmath, amssymb}
+\usepackage{physics} 
+\usepackage{siunitx} 
+\usepackage{enumitem}
+\usepackage{float}
+\usepackage{multirow}
+\usepackage{booktabs} 
+\usepackage{bm}
+\usepackage{graphicx}
+\usepackage[hidelinks,pdfusetitle]{hyperref} 
+% --- siunitxとphysicsの競合回避設定 ---
+% 単位を書くときは \SI{数値}{単位} または \unit{単位} を使う
+% 数式の括弧は \qty(...) を使う
+
+\title{タイトル}
+\author{202312892 八尋優太}
+\date{\today}
+
+\begin{document}
+
+\begin{center}
+  \large\textbf{タイトル}
+\end{center}
+\begin{flushright}
+  202312892 八尋優太\
+\end{flushright}
+\vspace{5mm}
+
+\begin{table}[H]
+  \centering
+  \begin{tabular}{ccc}
+    \toprule
+    $\mathrm{素子}$ & $\mathrm{エネルギー}$ & $\mathrm{温度(K)}$ \\
+    \midrule
+    \multirow{2}{*}{$\mathrm{MOSFET}$} & $\mathrm{-\frac{\hbar}{2m}}$ & $200$ \\
+     & $\mathrm{[K]}$ & $\theta$ \\
+    \bottomrule
+  \end{tabular}
+\end{table}
+
+\end{document}
