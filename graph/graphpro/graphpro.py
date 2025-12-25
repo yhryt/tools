@@ -42,7 +42,10 @@ def load_settings():
         "marker_size": 20,
         "grid": True, # デフォルトでグリッドON
         "dpi": 100,
-        "show_r2": True
+        "dpi": 100,
+        "show_r2": True,
+        "x_log": False,
+        "y_log": False
     }
     
     if os.path.exists(CONFIG_FILE):
@@ -120,7 +123,7 @@ class GraphApp:
         plt.style.use('default')
         
         # UIに合わせた背景色
-        plt.rcParams['figure.facecolor'] = self.colors['bg']
+        plt.rcParams['figure.facecolor'] = 'white'
         # グラフエリアは白が見やすい
         plt.rcParams['axes.facecolor'] = 'white'
         
@@ -294,6 +297,10 @@ class GraphApp:
         self.entry_xunit.bind('<Return>', lambda e: self.draw_graph())
         self.entry_xunit.bind('<FocusOut>', lambda e: self.draw_graph())
 
+        self.var_x_log = tk.BooleanVar(value=self.settings.get("x_log", False))
+        self.chk_x_log = ttk.Checkbutton(grid_l, text="Log", variable=self.var_x_log, command=self.draw_graph)
+        self.chk_x_log.grid(row=0, column=4, sticky="w", padx=5)
+
         ttk.Label(grid_l, text="Y:").grid(row=1, column=0, sticky="w", pady=5)
         self.entry_ylabel = ttk.Entry(grid_l)
         self.entry_ylabel.grid(row=1, column=1, sticky="ew", padx=5, pady=5)
@@ -307,6 +314,10 @@ class GraphApp:
         self.entry_yunit.insert(0, self.settings.get("y_unit", ""))
         self.entry_yunit.bind('<Return>', lambda e: self.draw_graph())
         self.entry_yunit.bind('<FocusOut>', lambda e: self.draw_graph())
+
+        self.var_y_log = tk.BooleanVar(value=self.settings.get("y_log", False))
+        self.chk_y_log = ttk.Checkbutton(grid_l, text="Log", variable=self.var_y_log, command=self.draw_graph)
+        self.chk_y_log.grid(row=1, column=4, sticky="w", padx=5)
         
         grid_l.columnconfigure(1, weight=1)
 
@@ -544,7 +555,9 @@ class GraphApp:
             "x_unit": self.entry_xunit.get(),
             "y_label": self.entry_ylabel.get(),
             "y_unit": self.entry_yunit.get(),
-            "show_r2": self.var_show_r2.get()
+            "show_r2": self.var_show_r2.get(),
+            "x_log": self.var_x_log.get(),
+            "y_log": self.var_y_log.get()
         })
 
         x_col_idx = self.combo_x_col.current()
@@ -599,47 +612,133 @@ class GraphApp:
                 
                 if range_mask.sum() > 1:
                     try:
-                        x_fit = x_num_all[range_mask]
-                        y_fit = y_num[range_mask]
-                        z = np.polyfit(x_fit, y_fit, 1)
-                        p = np.poly1d(z)
+                        x_fit = x_num_all[range_mask].values.astype(float)
+                        y_fit = y_num[range_mask].values.astype(float)
                         
-                        corr = np.corrcoef(x_fit, y_fit)
-                        r2 = corr[0, 1]**2
-                        
-                        slope = float_to_latex_sci(z[0])
-                        intercept = float_to_latex_sci(abs(z[1]))
-                        sign = "+" if z[1] >= 0 else "-"
-                        
-                        trend_label = f"Fit: $y={slope}x {sign} {intercept}$"
+                        # ログスケールの場合は <= 0 のデータを除外
+                        valid_mask = np.full(x_fit.shape, True)
+                        if settings["x_log"]:
+                            valid_mask &= (x_fit > 0)
+                        if settings["y_log"]:
+                            valid_mask &= (y_fit > 0)
+                            
+                        x_fit = x_fit[valid_mask]
+                        y_fit = y_fit[valid_mask]
+
+                        if len(x_fit) < 2: continue
+
+                        # フィッティングモードの決定と計算
+                        # 1. Log-Log (両対数): log(y) = A * log(x) + B
+                        if settings["x_log"] and settings["y_log"]:
+                            log_x = np.log10(x_fit)
+                            log_y = np.log10(y_fit)
+                            z = np.polyfit(log_x, log_y, 1)
+                            A = z[0] # Slope
+                            B = z[1] # Intercept
+                            
+                            corr = np.corrcoef(log_x, log_y)
+                            r2 = corr[0, 1]**2
+                            
+                            s_A = float_to_latex_sci(A)
+                            s_B = float_to_latex_sci(abs(B))
+                            sign = "+" if B >= 0 else "-"
+                            trend_label = f"$\log(y)={s_A} \log(x) {sign} {s_B}$"
+                            
+                            func = lambda x: 10**(A * np.log10(x) + B)
+                            
+                        # 2. Semi-Log X (片対数X): y = A * log(x) + B
+                        elif settings["x_log"] and not settings["y_log"]:
+                            log_x = np.log10(x_fit)
+                            z = np.polyfit(log_x, y_fit, 1)
+                            A = z[0]
+                            B = z[1]
+                            
+                            corr = np.corrcoef(log_x, y_fit)
+                            r2 = corr[0, 1]**2
+                            
+                            s_A = float_to_latex_sci(A)
+                            s_B = float_to_latex_sci(abs(B))
+                            sign = "+" if B >= 0 else "-"
+                            trend_label = f"$y={s_A} \log(x) {sign} {s_B}$"
+                            
+                            func = lambda x: A * np.log10(x) + B
+
+                        # 3. Semi-Log Y (片対数Y): log(y) = A * x + B
+                        elif not settings["x_log"] and settings["y_log"]:
+                            log_y = np.log10(y_fit)
+                            z = np.polyfit(x_fit, log_y, 1)
+                            A = z[0]
+                            B = z[1]
+                            
+                            corr = np.corrcoef(x_fit, log_y)
+                            r2 = corr[0, 1]**2
+                            
+                            s_A = float_to_latex_sci(A)
+                            s_B = float_to_latex_sci(abs(B))
+                            sign = "+" if B >= 0 else "-"
+                            trend_label = f"$\log(y)={s_A} x {sign} {s_B}$"
+                            
+                            func = lambda x: 10**(A * x + B)
+
+                        # 4. Linear (通常): y = ax + b
+                        else:
+                            z = np.polyfit(x_fit, y_fit, 1)
+                            p = np.poly1d(z)
+                            
+                            corr = np.corrcoef(x_fit, y_fit)
+                            r2 = corr[0, 1]**2
+                            
+                            slope = float_to_latex_sci(z[0])
+                            intercept = float_to_latex_sci(abs(z[1]))
+                            sign = "+" if z[1] >= 0 else "-"
+                            
+                            trend_label = f"$y={slope}x {sign} {intercept}$"
+                            func = p
+
                         if settings.get("show_r2", True):
                             trend_label += f", $R^2={r2:.3f}$"
                         
-                        # 描画範囲
+                        # 描画用x座標の生成
                         x_min_fit, x_max_fit = x_fit.min(), x_fit.max()
-                        x_range = x_max_fit - x_min_fit
-                        if x_range == 0: x_range = 1 
                         
-                        margin = x_range * 0.1
-                        x_l_min = x_min_fit - margin
-                        x_l_max = x_max_fit + margin
-                        
-                        x_l = np.linspace(x_l_min, x_l_max, 100)
+                        # 範囲外への少しの延長
+                        if settings["x_log"]:
+                            # 対数軸の場合、少しマージンを取る計算
+                            log_min = np.log10(x_min_fit)
+                            log_max = np.log10(x_max_fit)
+                            diff = log_max - log_min
+                            if diff == 0: diff = 0.1
+                            m = diff * 0.1
+                            x_l = np.logspace(log_min - m, log_max + m, 100)
+                        else:
+                            x_range = x_max_fit - x_min_fit
+                            if x_range == 0: x_range = 1
+                            m = x_range * 0.1
+                            x_l = np.linspace(x_min_fit - m, x_max_fit + m, 100)
                         
                         t_color = trend_colors[t_idx % len(trend_colors)]
                         
-                        line, = ax.plot(x_l, p(x_l), color=t_color, linestyle='--', linewidth=2.0, alpha=0.9, label=trend_label, zorder=2)
+                        line, = ax.plot(x_l, func(x_l), color=t_color, linestyle='--', linewidth=2.0, alpha=0.9, label=trend_label, zorder=2)
                         
                         # 重複しないようにラベルを追加
                         if trend_label not in fit_labels:
                             fit_handles.append(line)
                             fit_labels.append(trend_label)
                         
-                    except: pass
+                    except Exception as e:
+                        # print(f"Trendline error: {e}") 
+                        pass
 
-        # x=0, y=0 のラインを強調（グレーに変更）、zorder=1で最背面へ
-        ax.axhline(0, color='gray', linewidth=1.0, zorder=1)
-        ax.axvline(0, color='gray', linewidth=1.0, zorder=1)
+        # x=0, y=0 のラインを強調 (ログスケールの場合は無視)
+        if not settings["x_log"] and not settings["y_log"]:
+            ax.axhline(0, color='gray', linewidth=1.0, zorder=1)
+            ax.axvline(0, color='gray', linewidth=1.0, zorder=1)
+        
+        # 軸のスケール設定
+        if settings["x_log"]:
+            ax.set_xscale('log')
+        if settings["y_log"]:
+            ax.set_yscale('log')
         
         # 通常のグリッド線は設定に従う（視認性を上げるため明示的にスタイル指定）
         if settings["grid"]:
@@ -651,26 +750,27 @@ class GraphApp:
         # 軸ラベル
         xlabel = self.combine_label(settings["x_label"], settings["x_unit"])
         ylabel = self.combine_label(settings["y_label"], settings["y_unit"])
-        ax.set_xlabel(xlabel)
-        ax.set_ylabel(ylabel)
+        ax.set_xlabel(xlabel, fontsize=settings["font_size"]*1.5)
+        ax.set_ylabel(ylabel, fontsize=settings["font_size"]*1.5)
         
-        # 指数表記
-        exponent = int(math.floor(math.log10(max_val))) if max_val != 0 else 0
-        def sci_fmt(x, pos):
-            if x==0: return "0"
-            return r"${:.1f} \times 10^{{{}}}$".format(x / 10**exponent, exponent)
-        ax.yaxis.set_major_formatter(ticker.FuncFormatter(sci_fmt))
+        # 指数表記 (ログスケールでない場合のみ適用)
+        if not settings["y_log"]:
+            exponent = int(math.floor(math.log10(max_val))) if max_val != 0 else 0
+            def sci_fmt(x, pos):
+                if x==0: return "0"
+                return r"${:.1f} \times 10^{{{}}}$".format(x / 10**exponent, exponent)
+            ax.yaxis.set_major_formatter(ticker.FuncFormatter(sci_fmt))
 
         # --- 凡例の配置 (2箇所に分離) ---
         
         # 1. プロット凡例 (右上) - データが2つ以上ある場合のみ
         if len(plot_handles) > 1:
-            l1 = ax.legend(plot_handles, plot_labels, loc='upper right', fontsize=settings["font_size"]*0.8, frameon=True)
+            l1 = ax.legend(plot_handles, plot_labels, loc='upper right', fontsize=settings["font_size"]*1.2, frameon=True)
             ax.add_artist(l1) # 2つ目の凡例を追加するために必要
             
         # 2. 近似直線凡例 (右下) - 近似直線がある場合のみ
         if fit_handles:
-            ax.legend(fit_handles, fit_labels, loc='lower right', fontsize=settings["font_size"]*0.8, frameon=True)
+            ax.legend(fit_handles, fit_labels, loc='lower right', fontsize=settings["font_size"]*1.2, frameon=True)
 
     def draw_graph(self):
         self.ax.clear()

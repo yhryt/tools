@@ -1,0 +1,52 @@
+@import "tailwindcss";
+
+:root {
+    --background: #000000;
+    --foreground: #e2e8f0;
+
+    /* Obsidian-like Palette */
+    --primary: #7c3aed;
+    /* Violet 600 */
+    --secondary: #a78bfa;
+    /* Violet 400 */
+    --accent: #2e1065;
+    /* Violet 950 */
+
+    --card-bg: #111111;
+    --card-border: #333333;
+}
+
+body {
+    color: var(--foreground);
+    background: var(--background);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    overflow-x: hidden;
+}
+
+@layer utilities {
+    .obsidian-card {
+        @apply bg-[var(--card-bg)] border border-[var(--card-border)] rounded-lg shadow-sm transition-all duration-200;
+    }
+
+    .obsidian-card:hover {
+        @apply border-[var(--primary)] shadow-md;
+    }
+}
+
+/* Scrollbar Customization */
+::-webkit-scrollbar {
+    width: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: #000000;
+}
+
+::-webkit-scrollbar-thumb {
+    background: #333333;
+    border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: #555555;
+}

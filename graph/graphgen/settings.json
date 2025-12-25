@@ -1,17 +1,17 @@
 {
-    "x_label": "時間",
-    "x_unit": "",
-    "y_label": "電流",
-    "y_unit": "A^2",
+    "x_label": "スクリーンからの距離L",
+    "x_unit": "cm",
+    "y_label": "赤色レーザの直径W",
+    "y_unit": "cm",
+    "use_trendline": "y",
     "font_family": "MS Gothic",
     "font_size": 12,
-    "marker_size": 30,
-    "grid": false,
-    "dpi": 300,
-    "show_r2": false,
-    "use_trendline": "y",
     "figure_size": [
         10,
         6
-    ]
+    ],
+    "marker_size": 30,
+    "dpi": 300,
+    "grid": false,
+    "show_r2": false
 }

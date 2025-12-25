@@ -1,12 +1,14 @@
 {
-    "x_label": "",
-    "x_unit": "",
-    "y_label": "",
-    "y_unit": "",
+    "x_label": "スクリーンからの距離",
+    "x_unit": "cm",
+    "y_label": "赤色レーザの直径",
+    "y_unit": "cm",
     "font_family": "MS Gothic",
     "font_size": 10,
     "marker_size": 20,
     "grid": true,
     "dpi": 100,
-    "show_r2": true
+    "show_r2": false,
+    "x_log": false,
+    "y_log": false
 }
