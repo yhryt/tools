@@ -3,6 +3,7 @@ from tkinter import ttk, filedialog, messagebox
 from tkinterdnd2 import DND_FILES, TkinterDnD
 from pypdf import PdfWriter, PdfReader
 from PIL import Image
+import fitz  # PyMuPDF
 import os
 import threading
 
@@ -23,10 +24,12 @@ class PDFTool(TkinterDnD.Tk):
         self.merge_tab = MergeTab(self.notebook)
         self.split_tab = SplitTab(self.notebook)
         self.img2pdf_tab = Img2PdfTab(self.notebook)
+        self.pdf2img_tab = Pdf2ImgTab(self.notebook)
         
         self.notebook.add(self.merge_tab, text="Merge PDFs")
         self.notebook.add(self.split_tab, text="Split PDF")
         self.notebook.add(self.img2pdf_tab, text="Images to PDF")
+        self.notebook.add(self.pdf2img_tab, text="PDF to Images")
 
 class BaseTab(ttk.Frame):
     def __init__(self, parent):
@@ -365,6 +368,84 @@ class Img2PdfTab(BaseTab):
             if images:
                 images[0].save(save_path, save_all=True, append_images=images[1:])
                 messagebox.showinfo("Success", f"Saved to {save_path}")
+        except Exception as e:
+            messagebox.showerror("Error", str(e))
+        finally:
+            self.set_loading(False)
+
+class Pdf2ImgTab(BaseTab):
+    def setup_ui(self):
+        self.add_drop_zone(self.on_drop)
+        
+        self.file_label = ttk.Label(self, text="No file selected")
+        self.file_label.pack(pady=5)
+        
+        self.file_list_frame = tk.Frame(self) # Dummy
+        
+        # Options
+        self.opts_frame = ttk.LabelFrame(self, text="Conversion Options")
+        self.opts_frame.pack(fill=tk.X, padx=10, pady=5)
+        
+        # Format
+        ttk.Label(self.opts_frame, text="Format:").pack(side=tk.LEFT, padx=5, pady=5)
+        self.fmt_var = tk.StringVar(value="png")
+        ttk.Radiobutton(self.opts_frame, text="PNG", variable=self.fmt_var, value="png").pack(side=tk.LEFT, padx=5)
+        ttk.Radiobutton(self.opts_frame, text="JPG", variable=self.fmt_var, value="jpg").pack(side=tk.LEFT, padx=5)
+        
+        # DPI
+        ttk.Label(self.opts_frame, text="DPI:").pack(side=tk.LEFT, padx=5)
+        self.ent_dpi = ttk.Entry(self.opts_frame, width=5)
+        self.ent_dpi.insert(0, "150")
+        self.ent_dpi.pack(side=tk.LEFT, padx=5)
+        
+        self.action_text = "Convert to Images"
+        self.action_btn = ttk.Button(self, text=self.action_text, command=self.run_convert)
+        self.action_btn.pack(pady=10)
+
+    def on_drop(self, event):
+        files = self.tk.splitlist(event.data)
+        if files and files[0].lower().endswith('.pdf'):
+            self.files = [files[0]]
+            self.file_label.config(text=os.path.basename(files[0]))
+
+    def select_files(self):
+        f = filedialog.askopenfilename(filetypes=[("PDF Files", "*.pdf")])
+        if f:
+            self.files = [f]
+            self.file_label.config(text=os.path.basename(f))
+
+    def run_convert(self):
+        if not self.files:
+            messagebox.showwarning("Warning", "Select a PDF file.")
+            return
+
+        out_dir = filedialog.askdirectory(title="Select Output Folder")
+        if not out_dir:
+            return
+
+        try:
+            dpi = int(self.ent_dpi.get())
+        except ValueError:
+            dpi = 150
+
+        self.set_loading(True)
+        threading.Thread(target=self.convert_logic, args=(out_dir, self.fmt_var.get(), dpi), daemon=True).start()
+
+    def convert_logic(self, out_dir, fmt, dpi):
+        try:
+            doc = fitz.open(self.files[0])
+            zoom = dpi / 72
+            mat = fitz.Matrix(zoom, zoom)
+            
+            base_name = os.path.splitext(os.path.basename(self.files[0]))[0]
+            
+            for i, page in enumerate(doc):
+                pix = page.get_pixmap(matrix=mat)
+                out_path = os.path.join(out_dir, f"{base_name}_page_{i+1}.{fmt}")
+                pix.save(out_path)
+                
+            doc.close()
+            messagebox.showinfo("Success", f"Saved images to {out_dir}")
         except Exception as e:
             messagebox.showerror("Error", str(e))
         finally:
